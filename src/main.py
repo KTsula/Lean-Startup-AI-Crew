@@ -9,6 +9,23 @@ import os
 from ui.bmc_visualization import display_bmc, extract_bmc_from_json, interactive_bmc_editor
 from ui.validation_interface import display_validation_plan, human_validation_form, generate_recommendations
 
+import sys
+import platform
+
+# SQLite3 compatibility check
+def check_sqlite_version():
+    import sqlite3
+    print(f"SQLite3 version: {sqlite3.sqlite_version}")
+    if tuple(map(int, sqlite3.sqlite_version.split('.'))) < (3, 35, 0):
+        try:
+            import pysqlite3
+            sys.modules['sqlite3'] = pysqlite3
+            print("Replaced system SQLite3 with pysqlite3")
+        except ImportError:
+            print("Could not replace SQLite3. Some features may not work.")
+
+# Run version check
+check_sqlite_version()
 def init_session_state():
     """Initialize session state variables."""
     if 'project_stage' not in st.session_state:
