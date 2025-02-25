@@ -2,6 +2,7 @@ from crewai import Agent, Task, Crew, Process
 from crewai_tools import SerperDevTool
 from typing import List, Dict
 import json
+import re
 
 class OrchestratorAgent:
     def __init__(self):
@@ -83,11 +84,38 @@ class OrchestratorAgent:
         )
 
         return [analysis_task]
+    
+    def extract_assumptions(self, analysis_output):
+        """Extract key assumptions from the analysis output"""
+        try:
+            # Try to find and parse the JSON summary
+            json_pattern = r'{\s*"key_assumptions":.+}'
+            match = list(re.finditer(json_pattern, analysis_output, re.DOTALL))[-1]
+            json_str = match.group(0)
+            data = json.loads(json_str)
+            
+            # Extract assumptions as strings
+            assumptions = [f"{item['assumption']}" for item in data.get("key_assumptions", [])]
+            return assumptions
+        except:
+            # Fallback to regex extraction if JSON parsing fails
+            assumptions_pattern = r"ASSUMPTION:(.*?)REASONING:(.*?)(?=ASSUMPTION:|RISK:|$)"
+            assumptions = re.finditer(assumptions_pattern, analysis_output, re.DOTALL)
+            return [match.group(1).strip() for match in assumptions]
 
     def get_crew(self, tasks: list) -> Crew:
         """Create a crew with the orchestrator agent and specified tasks."""
         return Crew(
             agents=[self.agent],
+            tasks=tasks,
+            verbose=True,
+            process=Process.sequential
+        )
+        
+    def get_research_crew(self, orchestrator_agent, researcher_agent, tasks: list) -> Crew:
+        """Create a crew with orchestrator and researcher agents."""
+        return Crew(
+            agents=[orchestrator_agent, researcher_agent],
             tasks=tasks,
             verbose=True,
             process=Process.sequential
